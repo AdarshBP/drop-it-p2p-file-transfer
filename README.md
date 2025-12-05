@@ -1,8 +1,14 @@
 # DropIt
 
+https://dropitz.netlify.app
+
+
+
+
+
 Lightweight peer-to-peer file sharing (WebRTC data channel) with a simple UI.
 
-This repository contains DropIt — a small React + Vite app that uses PeerJS for direct P2P file transfers. The UI is built with Tailwind utilities and supports chunked transfers, progress, "Send All", and a router with Transfer / About / Contact pages.
+This repository contains DropIt — a small React + Vite app that uses PeerJS for direct P2P file transfers. The UI is built with Tailwind utilities and supports chunked transfers, progress, "Send All", and planned nearby device discovery using Firebase Realtime Database.
 
 ## Features
 - Peer-to-peer file transfers using PeerJS (chunked uploads + ACKs)

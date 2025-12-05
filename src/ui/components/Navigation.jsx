@@ -11,7 +11,7 @@ export default function Navigation({ onThemeToggle, onSettings, onReload, themeL
   ]
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-lg bg-[var(--bg-soft)]/80 border-b border-[var(--border)] shadow-lg">
+    <header className="sticky top-0 z-50 backdrop-blur-lg bg-[var(--bg-soft)]/80  border-[var(--border)] shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo and Brand */}
@@ -57,9 +57,10 @@ export default function Navigation({ onThemeToggle, onSettings, onReload, themeL
             <button
               className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--card-hover)] text-[var(--text)] transition-all duration-200 hover:shadow-md"
               onClick={onSettings}
+              title="Open settings"
               aria-haspopup="dialog"
             >
-              ⚙️ Settings
+              ⚙️ 
             </button>
           </div>
         </div>

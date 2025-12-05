@@ -1,8 +1,6 @@
 import React from 'react'
 
 export default function ContactPage() {
-  const profilePhoto = '/profile.jpg'
-  
   const contactLinks = [
     {
       icon: '📧',
@@ -25,19 +23,12 @@ export default function ContactPage() {
         <div className="text-center space-y-6">
           {/* Profile Photo */}
           <div className="inline-block relative">
-            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-[var(--border)] shadow-lg">
+            <div className="w-56 h-56 rounded-full overflow-hidden border-4 border-[var(--border)] shadow-lg">
               <img 
-                src={profilePhoto} 
-                alt="Adarsh BP" 
+                src="https://github.com/AdarshBP.png" 
+                alt="Adarsh" 
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.style.display = 'none'
-                  e.target.nextElementSibling.style.display = 'flex'
-                }}
               />
-              <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-5xl font-bold" style={{display: 'none'}}>
-                A
-              </div>
             </div>
           </div>
           
@@ -63,14 +54,14 @@ export default function ContactPage() {
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="group bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 hover:shadow-lg hover:border-[var(--primary)] transition-all duration-200 flex items-center gap-4"
+              className="group border border-[var(--border)] rounded-lg p-6 hover:bg-[var(--bg-soft)]/30 hover:border-[var(--primary)] transition-all duration-200 flex items-center gap-4"
             >
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-600/10 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
-                <span className="text-2xl">{link.icon}</span>
+              <div className="w-12 h-12 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+                <span className="text-3xl">{link.icon}</span>
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-sm font-semibold text-[var(--text)] mb-1">{link.label}</h3>
-                <p className="text-xs text-[var(--muted)] truncate">{link.value}</p>
+                <p className="text-sm text-[var(--muted)] truncate">{link.value}</p>
               </div>
               <div className="text-[var(--muted)] group-hover:text-[var(--primary)] transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

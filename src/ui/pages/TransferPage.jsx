@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Peer } from 'peerjs'
-import PeerCard from '../components/PeerCard.jsx'
-import ConnectPanel from '../components/ConnectPanel.jsx'
-import DropZone from '../components/DropZone.jsx'
-import FileRow from '../components/FileRow.jsx'
+import SendTab from '../components/SendTab.jsx'
+import ReceiveTab from '../components/ReceiveTab.jsx'
 import SettingsModal from '../components/SettingsModal.jsx'
 
 export default function TransferPage({ settings, setSettings, themeLight, toast, showSettings, setShowSettings, targetPeerIdFromUrl }) {
@@ -13,12 +11,16 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
   const [logs, setLogs] = useState([])
   const [tasks, setTasks] = useState([])
   const [autoConnectAttempted, setAutoConnectAttempted] = useState(false)
+  const [activeTab, setActiveTab] = useState('send')
 
   const peerRef = useRef(null)
   const connRef = useRef(null)
   const incomingRef = useRef(new Map())
   const tasksRef = useRef([])
   const [receivedFiles, setReceivedFiles] = useState([])
+  const heartbeatIntervalRef = useRef(null)
+  const lastHeartbeatRef = useRef(null)
+  const heartbeatTimeoutRef = useRef(null)
 
   function log(msg){
     settings.debug && console.log('[debug]', msg)
@@ -37,7 +39,10 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
       p.on('open', id=>{ setPeerId(id); log('Peer open '+id) })
       p.on('connection', c=> setupConnection(c))
       p.on('error', err=>{ log(err); toast('Peer error — check server / network', 'error') })
-      return ()=> { try { p.destroy() } catch{} }
+      return ()=> { 
+        stopHeartbeat()
+        try { p.destroy() } catch{} 
+      }
     } catch(err){ toast('Peer creation failed', 'error') }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -47,6 +52,7 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
     if (targetPeerIdFromUrl && !autoConnectAttempted && peerRef.current && peerId !== '...') {
       setAutoConnectAttempted(true)
       setTargetId(targetPeerIdFromUrl)
+      setActiveTab('receive') // Switch to receive tab
       setTimeout(() => {
         try {
           if(connRef.current?.open) connRef.current.close()
@@ -63,10 +69,71 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
 
   function setupConnection(c){
     connRef.current = c
-    c.on('open', ()=>{ setConnStatus({ kind:'connected', text:`Connected to ${c.peer}` }); toast(`✅ Connected to ${c.peer}`, 'success') })
+    c.on('open', ()=>{ 
+      setConnStatus({ kind:'connected', text:`Connected to ${c.peer}` })
+      toast(`✅ Connected to ${c.peer}`, 'success')
+      startHeartbeat()
+    })
     c.on('data', handleData)
-    c.on('close', ()=>{ setConnStatus({ kind:'disconnected', text:'Disconnected' }); toast('🔌 Connection closed','info') })
-    c.on('error', err=>{ log(err); setConnStatus({ kind:'error', text:'Connection error' }); toast('Connection error — retry?','error') })
+    c.on('close', ()=>{ 
+      setConnStatus({ kind:'disconnected', text:'Disconnected' })
+      toast('🔌 Connection closed','info')
+      stopHeartbeat()
+    })
+    c.on('error', err=>{ 
+      log(err)
+      setConnStatus({ kind:'error', text:'Connection error' })
+      toast('Connection error — retry?','error')
+      stopHeartbeat()
+    })
+  }
+
+  function startHeartbeat() {
+    stopHeartbeat() // Clear any existing heartbeat
+    lastHeartbeatRef.current = Date.now()
+    
+    // Send heartbeat every 10 seconds
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (connRef.current?.open) {
+        try {
+          connRef.current.send({ type: 'heartbeat', timestamp: Date.now() })
+          log('💓 Heartbeat sent')
+        } catch (err) {
+          log('Heartbeat send failed')
+          handleHeartbeatFailure()
+        }
+      }
+    }, 10000)
+
+    // Check for heartbeat response timeout (15 seconds)
+    heartbeatTimeoutRef.current = setInterval(() => {
+      const now = Date.now()
+      if (lastHeartbeatRef.current && now - lastHeartbeatRef.current > 15000) {
+        log('💔 Heartbeat timeout - connection may be dead')
+        handleHeartbeatFailure()
+      }
+    }, 3000)
+  }
+
+  function stopHeartbeat() {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current)
+      heartbeatIntervalRef.current = null
+    }
+    if (heartbeatTimeoutRef.current) {
+      clearInterval(heartbeatTimeoutRef.current)
+      heartbeatTimeoutRef.current = null
+    }
+    lastHeartbeatRef.current = null
+  }
+
+  function handleHeartbeatFailure() {
+    stopHeartbeat()
+    setConnStatus({ kind:'error', text:'Connection lost' })
+    toast('💔 Connection lost - please reconnect', 'error')
+    try {
+      connRef.current?.close()
+    } catch {}
   }
 
   function copyPeerId(){
@@ -375,6 +442,27 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
         onAck(data)
         break
       }
+
+      case 'heartbeat': {
+        // Respond to heartbeat
+        lastHeartbeatRef.current = Date.now()
+        try {
+          if(connRef.current?.open){
+            connRef.current.send({ type:'heartbeat-ack', timestamp: Date.now() })
+            log('💓 Heartbeat acknowledged')
+          }
+        } catch(err){ 
+          log('Heartbeat ack failed')
+        }
+        break
+      }
+
+      case 'heartbeat-ack': {
+        // Received heartbeat acknowledgment
+        lastHeartbeatRef.current = Date.now()
+        log('💚 Heartbeat confirmed')
+        break
+      }
         
       default: 
         log('Unhandled type: '+data.type)
@@ -388,136 +476,75 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
 
   return (
     <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      {/* Connection Cards */}
-      <section aria-label="Connection Status" className="mb-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <PeerCard peerId={peerId} onCopy={copyPeerId} />
-          <ConnectPanel
+      {/* Tab Navigation */}
+      <div className="flex border-b border-[var(--border)] mb-8">
+        <button
+          onClick={() => setActiveTab('send')}
+          className={`flex-1 px-8 py-4 font-semibold text-lg transition-all duration-200 relative ${
+            activeTab === 'send'
+              ? 'text-[var(--primary)]'
+              : 'text-[var(--muted)] hover:text-[var(--text)]'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-2xl">📤</span>
+            <span>Send</span>
+          </div>
+          {activeTab === 'send' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)]"></div>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('receive')}
+          className={`flex-1 px-8 py-4 font-semibold text-lg transition-all duration-200 relative ${
+            activeTab === 'receive'
+              ? 'text-[var(--primary)]'
+              : 'text-[var(--muted)] hover:text-[var(--text)]'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-2xl">📥</span>
+            <span>Receive</span>
+          </div>
+          {activeTab === 'receive' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)]"></div>
+          )}
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div>
+        {activeTab === 'send' ? (
+          <SendTab
+            peerId={peerId}
+            onCopyPeerId={copyPeerId}
+            connStatus={connStatus}
+            tasks={tasks}
+            onEnqueueFiles={enqueue}
+            canSend={canSend}
+            speedOf={speedOf}
+            onStartTask={startTask}
+            onPauseTask={pauseTask}
+            onResumeTask={resumeTask}
+            onCancelTask={cancelTask}
+            onSendAll={sendAll}
+            pendingCount={pendingCount}
+            logs={logs}
+            onClearActivity={clearActivity}
+          />
+        ) : (
+          <ReceiveTab
             targetId={targetId}
             onTargetChange={e => setTargetId(e.target.value)}
             onConnect={connect}
             onDisconnect={disconnect}
-            status={connStatus}
+            connStatus={connStatus}
+            receivedFiles={receivedFiles}
+            logs={logs}
+            onClearActivity={clearActivity}
           />
-        </div>
-      </section>
-      
-      {/* Files */}
-      <section className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden mb-6 shadow-xl" aria-label="Files">
-        <div className="px-6 py-4 border-b border-[var(--border)] bg-gradient-to-r from-[var(--card)] to-[var(--card-hover)] flex items-center justify-between">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <span className="text-2xl">📁</span> Files
-          </h2>
-          {tasks.length > 1 && (
-            <button
-              className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-soft)] hover:bg-[var(--card-hover)] text-[var(--text)] text-sm font-medium transition-all duration-200 hover:shadow-md disabled:opacity-50"
-              onClick={sendAll}
-              disabled={pendingCount === 0 || !canSend}
-              title={pendingCount === 0 ? 'No pending files to send' : 'Send all pending files'}
-            >
-              ➤ Send All {pendingCount > 0 && <span className="ml-1 px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs">{pendingCount}</span>}
-            </button>
-          )}
-        </div>
-        <div className="p-4">
-          <DropZone onFiles={files=> enqueue(files)} />
-
-          <ul className="list-none mt-3 p-0 space-y-0">
-            {tasks.map(t=> (
-              <FileRow
-                key={t.id}
-                task={t}
-                canSend={canSend}
-                speed={speedOf(t)}
-                onStart={startTask}
-                onPause={pauseTask}
-                onResume={resumeTask}
-                onCancel={cancelTask}
-              />
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* Received Files */}
-      {receivedFiles.length > 0 && (
-        <section className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden mb-6 shadow-xl" aria-label="Received Files">
-          <div className="px-6 py-4 border-b border-[var(--border)] bg-gradient-to-r from-[var(--card)] to-[var(--card-hover)]">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <span className="text-2xl">📥</span> Received Files
-            </h2>
-          </div>
-          <div className="p-4">
-            <ul className="list-none p-0 space-y-3">
-              {receivedFiles.map(rf => {
-                const percent = rf.size > 0 ? Math.round((rf.received / rf.size) * 100) : 0
-                const progressColor = rf.complete ? 'bg-green-500' : 'bg-blue-500'
-                
-                return (
-                  <li key={rf.id} className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 hover:shadow-lg transition-all duration-200">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0">
-                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-green-500/10 to-blue-600/10 flex items-center justify-center border-2 border-[var(--border)]">
-                          <span className="text-3xl">{rf.complete ? '✅' : '📥'}</span>
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-[var(--text)] break-words mb-1">{rf.name}</h3>
-                            <p className="text-xs text-[var(--muted)] font-medium">
-                              {(() => {
-                                const received = rf.received || 0
-                                const size = rf.size
-                                const formatBytes = (bytes) => {
-                                  if(bytes < 1024) return `${bytes} B`
-                                  if(bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`
-                                  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
-                                }
-                                return `${formatBytes(received)} / ${formatBytes(size)}`
-                              })()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="relative w-full h-2.5 bg-[var(--bg-soft)] rounded-full overflow-hidden shadow-inner">
-                            <div className={`absolute left-0 top-0 bottom-0 transition-all duration-300 shadow-sm ${progressColor}`} style={{ width: `${percent}%` }} />
-                          </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-[var(--muted)] font-medium">
-                              {percent}% {rf.complete ? 'Complete' : 'Receiving...'}
-                            </span>
-                            {rf.complete && rf.url && (
-                              <a href={rf.url} download={rf.name} className="text-[var(--primary)] font-semibold hover:underline">
-                                Download Again
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        </section>
-      )}
-
-      {/* Activity */}
-      <section className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-xl" aria-label="Logs and Notifications">
-        <div className="px-6 py-4 border-b border-[var(--border)] bg-gradient-to-r from-[var(--card)] to-[var(--card-hover)] flex items-center justify-between">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <span className="text-2xl">📊</span> Activity
-          </h2>
-          <button className="px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-soft)] hover:bg-[var(--card-hover)] text-[var(--text)] text-sm font-medium transition-all duration-200 hover:shadow-md" onClick={clearActivity} title="Clear activity">Clear</button>
-        </div>
-        <div className="p-6">
-          <div className="mt-4 p-4 bg-[var(--bg-soft)] rounded-xl border border-[var(--border)]">
-            <div className="font-mono text-xs whitespace-pre-wrap text-[var(--muted)] leading-relaxed">{logs.join('\n')}</div>
-          </div>
-        </div>
-      </section>
+        )}
+      </div>
 
       {/* Settings Modal */}
       {showSettings && (
