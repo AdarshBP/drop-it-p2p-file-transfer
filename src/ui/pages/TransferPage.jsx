@@ -6,12 +6,13 @@ import DropZone from '../components/DropZone.jsx'
 import FileRow from '../components/FileRow.jsx'
 import SettingsModal from '../components/SettingsModal.jsx'
 
-export default function TransferPage({ settings, setSettings, themeLight, toast, showSettings, setShowSettings }) {
+export default function TransferPage({ settings, setSettings, themeLight, toast, showSettings, setShowSettings, targetPeerIdFromUrl }) {
   const [peerId, setPeerId] = useState('...')
   const [connStatus, setConnStatus] = useState({ kind:'disconnected', text:'Disconnected' })
   const [targetId, setTargetId] = useState('')
   const [logs, setLogs] = useState([])
   const [tasks, setTasks] = useState([])
+  const [autoConnectAttempted, setAutoConnectAttempted] = useState(false)
 
   const peerRef = useRef(null)
   const connRef = useRef(null)
@@ -40,6 +41,25 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
     } catch(err){ toast('Peer creation failed', 'error') }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Auto-connect from URL parameter
+  useEffect(() => {
+    if (targetPeerIdFromUrl && !autoConnectAttempted && peerRef.current && peerId !== '...') {
+      setAutoConnectAttempted(true)
+      setTargetId(targetPeerIdFromUrl)
+      setTimeout(() => {
+        try {
+          if(connRef.current?.open) connRef.current.close()
+          const c = peerRef.current.connect(targetPeerIdFromUrl)
+          setupConnection(c)
+          toast(`🔗 Auto-connecting to ${targetPeerIdFromUrl}...`, 'info')
+        } catch(err){ 
+          toast('Auto-connection failed', 'error')
+        }
+      }, 500)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetPeerIdFromUrl, autoConnectAttempted, peerId])
 
   function setupConnection(c){
     connRef.current = c

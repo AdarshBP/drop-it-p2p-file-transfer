@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useSearchParams } from 'react-router-dom'
 import Navigation from './components/Navigation.jsx'
 import TransferPage from './pages/TransferPage.jsx'
 import AboutPage from './pages/AboutPage.jsx'
 import ContactPage from './pages/ContactPage.jsx'
+
+function TransferPageWrapper(props) {
+  const [searchParams] = useSearchParams()
+  const peerIdFromUrl = searchParams.get('peer')
+  return <TransferPage {...props} targetPeerIdFromUrl={peerIdFromUrl} />
+}
 
 export default function App() {
   const [themeLight, setThemeLight] = useState(false)
@@ -31,6 +37,18 @@ export default function App() {
     document.body.classList.toggle('theme-light', themeLight) 
   }, [themeLight])
 
+  // Listen for custom toast events from child components
+  useEffect(() => {
+    const handleToastEvent = (e) => {
+      if (e.detail && e.detail.msg) {
+        toast(e.detail.msg, e.detail.type || 'info')
+      }
+    }
+    window.addEventListener('toast', handleToastEvent)
+    return () => window.removeEventListener('toast', handleToastEvent)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <BrowserRouter>
       <div className="min-h-screen">
@@ -45,7 +63,7 @@ export default function App() {
           <Route 
             path="/" 
             element={
-              <TransferPage
+              <TransferPageWrapper
                 settings={settings}
                 setSettings={setSettings}
                 themeLight={themeLight}
