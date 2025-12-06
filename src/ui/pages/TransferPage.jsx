@@ -3,15 +3,22 @@ import { Peer } from 'peerjs'
 import SendTab from '../components/SendTab.jsx'
 import ReceiveTab from '../components/ReceiveTab.jsx'
 import SettingsModal from '../components/SettingsModal.jsx'
+import { RANDOM_PEER_NAMES, DEFAULT_ICE_CONFIG } from '../../constants/config.js'
 
 export default function TransferPage({ settings, setSettings, themeLight, toast, showSettings, setShowSettings, targetPeerIdFromUrl }) {
   const [peerId, setPeerId] = useState('...')
-  const [connStatus, setConnStatus] = useState({ kind:'disconnected', text:'Disconnected' })
+  // If peerId is present in URL, show initializing status
+  const initialConnStatus = targetPeerIdFromUrl
+    ? { kind: 'initializing', text: 'Initializing system...' }
+    : { kind: 'disconnected', text: 'Disconnected' };
+  const [connStatus, setConnStatus] = useState(initialConnStatus)
   const [targetId, setTargetId] = useState('')
   const [logs, setLogs] = useState([])
   const [tasks, setTasks] = useState([])
   const [autoConnectAttempted, setAutoConnectAttempted] = useState(false)
-  const [activeTab, setActiveTab] = useState('send')
+  // If peerId is present in URL, switch immediately to receive tab
+  const [activeTab, setActiveTab] = useState(targetPeerIdFromUrl ? 'receive' : 'send')
+  const [remoteDevice, setRemoteDevice] = useState(null)
 
   const peerRef = useRef(null)
   const connRef = useRef(null)
@@ -21,6 +28,7 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
   const heartbeatIntervalRef = useRef(null)
   const lastHeartbeatRef = useRef(null)
   const heartbeatTimeoutRef = useRef(null)
+  const heartbeatFailureCountRef = useRef(0)
 
   function log(msg){
     settings.debug && console.log('[debug]', msg)
@@ -31,29 +39,71 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
     setLogs([])
   }
 
-  // Peer init
-  useEffect(()=>{
-    try {
-      const p = settings.iceConfig ? new Peer(undefined, settings.iceConfig) : new Peer()
-      peerRef.current = p
-      p.on('open', id=>{ setPeerId(id); log('Peer open '+id) })
-      p.on('connection', c=> setupConnection(c))
-      p.on('error', err=>{ log(err); toast('Peer error — check server / network', 'error') })
-      return ()=> { 
-        stopHeartbeat()
-        try { p.destroy() } catch{} 
+  // Peer init with random name and retry on conflict
+  useEffect(() => {
+    let usedNames = [];
+    let peerInstance = null;
+    let destroyed = false;
+
+    function getRandomName() {
+      const available = RANDOM_PEER_NAMES.filter(n => !usedNames.includes(n));
+      if (available.length === 0) return null;
+      const idx = Math.floor(Math.random() * available.length);
+      return available[idx];
+    }
+
+    function createPeerWithRandomName() {
+      const name = getRandomName();
+      if (!name) {
+        toast('No available peer names left', 'error');
+        setPeerId('...');
+        return;
       }
-    } catch(err){ toast('Peer creation failed', 'error') }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+      usedNames.push(name);
+      setPeerId('...');
+      // Use centralized ICE config
+      const config = settings.iceConfig || DEFAULT_ICE_CONFIG;
+      const p = new Peer(name, config);
+      peerRef.current = p;
+      peerInstance = p;
+      p.on('open', id => {
+        if (destroyed) return;
+        setPeerId(id);
+        log('Peer open ' + id);
+      });
+      p.on('connection', c => setupConnection(c));
+      p.on('error', err => {
+        log(err);
+        if (err.type === 'unavailable-id' || (err.message && err.message.includes('ID is taken'))) {
+          // Try another name
+          log('Peer ID conflict, retrying with another name...');
+          try { p.destroy(); } catch {}
+          createPeerWithRandomName();
+        } else {
+          toast('Peer error — check server / network', 'error');
+        }
+      });
+    }
+
+    createPeerWithRandomName();
+
+    return () => {
+      destroyed = true;
+      stopHeartbeat();
+      try { peerInstance && peerInstance.destroy(); } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-connect from URL parameter
   useEffect(() => {
     if (targetPeerIdFromUrl && !autoConnectAttempted && peerRef.current && peerId !== '...') {
       setAutoConnectAttempted(true)
       setTargetId(targetPeerIdFromUrl)
-      setActiveTab('receive') // Switch to receive tab
+      setConnStatus({ kind: 'initializing', text: 'Initializing system...' })
+      setActiveTab('receive') // Switch to receive tab (redundant, but safe)
       setTimeout(() => {
+        setConnStatus({ kind: 'connecting', text: `Trying to connect to peer ${targetPeerIdFromUrl}...` })
         try {
           if(connRef.current?.open) connRef.current.close()
           const c = peerRef.current.connect(targetPeerIdFromUrl)
@@ -70,6 +120,10 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
   function setupConnection(c){
     connRef.current = c
     c.on('open', ()=>{ 
+      // Send device info handshake
+      try {
+        c.send({ type: 'device-info', userAgent: navigator.userAgent, platform: navigator.platform })
+      } catch {}
       setConnStatus({ kind:'connected', text:`Connected to ${c.peer}` })
       toast(`✅ Connected to ${c.peer}`, 'success')
       startHeartbeat()
@@ -77,13 +131,13 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
     c.on('data', handleData)
     c.on('close', ()=>{ 
       setConnStatus({ kind:'disconnected', text:'Disconnected' })
+      setRemoteDevice(null)
       toast('🔌 Connection closed','info')
       stopHeartbeat()
     })
     c.on('error', err=>{ 
       log(err)
       setConnStatus({ kind:'error', text:'Connection error' })
-      toast('Connection error — retry?','error')
       stopHeartbeat()
     })
   }
@@ -91,8 +145,9 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
   function startHeartbeat() {
     stopHeartbeat() // Clear any existing heartbeat
     lastHeartbeatRef.current = Date.now()
+    heartbeatFailureCountRef.current = 0
     
-    // Send heartbeat every 10 seconds
+    // Send heartbeat every 15 seconds (more tolerant for internet connections)
     heartbeatIntervalRef.current = setInterval(() => {
       if (connRef.current?.open) {
         try {
@@ -100,19 +155,25 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
           log('💓 Heartbeat sent')
         } catch (err) {
           log('Heartbeat send failed')
+          heartbeatFailureCountRef.current++
+          if (heartbeatFailureCountRef.current >= 3) {
+            handleHeartbeatFailure()
+          }
+        }
+      }
+    }, 15000)
+
+    // Check for heartbeat response timeout (45 seconds - 3x the interval for internet latency)
+    heartbeatTimeoutRef.current = setInterval(() => {
+      const now = Date.now()
+      if (lastHeartbeatRef.current && now - lastHeartbeatRef.current > 45000) {
+        heartbeatFailureCountRef.current++
+        log(`💔 Heartbeat timeout (${heartbeatFailureCountRef.current}/3) - connection may be degraded`)
+        if (heartbeatFailureCountRef.current >= 3) {
           handleHeartbeatFailure()
         }
       }
-    }, 10000)
-
-    // Check for heartbeat response timeout (15 seconds)
-    heartbeatTimeoutRef.current = setInterval(() => {
-      const now = Date.now()
-      if (lastHeartbeatRef.current && now - lastHeartbeatRef.current > 15000) {
-        log('💔 Heartbeat timeout - connection may be dead')
-        handleHeartbeatFailure()
-      }
-    }, 3000)
+    }, 5000)
   }
 
   function stopHeartbeat() {
@@ -125,6 +186,7 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
       heartbeatTimeoutRef.current = null
     }
     lastHeartbeatRef.current = null
+    heartbeatFailureCountRef.current = 0
   }
 
   function handleHeartbeatFailure() {
@@ -348,9 +410,11 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
 
   function handleData(data){
     if(!data || !data.type){ log('Unknown data'); return }
-    
+    if (data.type === 'device-info') {
+      setRemoteDevice({ userAgent: data.userAgent, platform: data.platform })
+      return
+    }
     console.log('📥 RECEIVED:', data.type, data.id)
-    
     switch(data.type){
       case 'file-meta': {
         const id = data.id || 'default'
@@ -446,6 +510,7 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
       case 'heartbeat': {
         // Respond to heartbeat
         lastHeartbeatRef.current = Date.now()
+        heartbeatFailureCountRef.current = 0 // Reset failure count on successful heartbeat
         try {
           if(connRef.current?.open){
             connRef.current.send({ type:'heartbeat-ack', timestamp: Date.now() })
@@ -460,6 +525,7 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
       case 'heartbeat-ack': {
         // Received heartbeat acknowledgment
         lastHeartbeatRef.current = Date.now()
+        heartbeatFailureCountRef.current = 0 // Reset failure count on successful ack
         log('💚 Heartbeat confirmed')
         break
       }
@@ -531,6 +597,8 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
             pendingCount={pendingCount}
             logs={logs}
             onClearActivity={clearActivity}
+            debug={settings.debug}
+            remoteDevice={remoteDevice}
           />
         ) : (
           <ReceiveTab
@@ -542,6 +610,8 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
             receivedFiles={receivedFiles}
             logs={logs}
             onClearActivity={clearActivity}
+            peerId={peerId}
+            toast={toast}
           />
         )}
       </div>

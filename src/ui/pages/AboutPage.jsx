@@ -29,7 +29,7 @@ export default function AboutPage() {
             I was working in a café with a friend, and he had a video file I needed to edit.
           </p>
           <p className="text-lg text-[var(--muted)] leading-relaxed">
-            We assumed transferring it would take a few seconds.
+            We assumed transferring it would take a few seconds. In fact, we were already planning what to do after the transfer, maybe finish the edit, maybe order another coffee, maybe even feel proud about how “efficient” we were. The café Wi-Fi looked decent, our laptops were charged, and for a moment, the universe seemed perfectly aligned for a simple file transfer. 
           </p>
         </div>
 
@@ -79,44 +79,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Why DropIt */}
-      <section className="space-y-8">
-        <h2 className="text-3xl font-bold text-[var(--text)]">Why DropIt?</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <div className="space-y-3">
-            <div className="text-4xl">🔐</div>
-            <h3 className="text-xl font-semibold text-[var(--text)]">100% Private</h3>
-            <p className="text-[var(--muted)]">End-to-end encrypted peer-to-peer transfers. Your files never touch our servers.</p>
-          </div>
-          <div className="space-y-3">
-            <div className="text-4xl">⚡</div>
-            <h3 className="text-xl font-semibold text-[var(--text)]">Blazing Fast</h3>
-            <p className="text-[var(--muted)]">Direct peer-to-peer connections mean no server bottlenecks. Maximum speed, every time.</p>
-          </div>
-          <div className="space-y-3">
-            <div className="text-4xl">∞</div>
-            <h3 className="text-xl font-semibold text-[var(--text)]">No Limits</h3>
-            <p className="text-[var(--muted)]">Send files of any size, any time. No quotas, no restrictions, no surprises.</p>
-          </div>
-          <div className="space-y-3">
-            <div className="text-4xl">🌐</div>
-            <h3 className="text-xl font-semibold text-[var(--text)]">Works Everywhere</h3>
-            <p className="text-[var(--muted)]">Any device, any browser. No installation, no registration, no hassle.</p>
-          </div>
-          <div className="space-y-3">
-            <div className="text-4xl">📊</div>
-            <h3 className="text-xl font-semibold text-[var(--text)]">Real-Time Tracking</h3>
-            <p className="text-[var(--muted)]">Watch your files transfer with live progress, speed, and time estimates.</p>
-          </div>
-          <div className="space-y-3">
-            <div className="text-4xl">🔗</div>
-            <h3 className="text-xl font-semibold text-[var(--text)]">Shareable Links</h3>
-            <p className="text-[var(--muted)]">Generate QR codes or links to share with others. They auto-connect when opened.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
+            {/* How It Works */}
       <section className="space-y-8">
         <h2 className="text-3xl font-bold text-[var(--text)]">How It Works</h2>
         <div className="space-y-8">
@@ -159,6 +122,43 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* Why DropIt */}
+      <section className="space-y-8">
+        <h2 className="text-3xl font-bold text-[var(--text)]">Why DropIt?</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <div className="space-y-3">
+            <div className="text-4xl">🔐</div>
+            <h3 className="text-xl font-semibold text-[var(--text)]">100% Private</h3>
+            <p className="text-[var(--muted)]">End-to-end encrypted peer-to-peer transfers. Your files never touch our servers.</p>
+          </div>
+          <div className="space-y-3">
+            <div className="text-4xl">⚡</div>
+            <h3 className="text-xl font-semibold text-[var(--text)]">Blazing Fast</h3>
+            <p className="text-[var(--muted)]">Direct peer-to-peer connections mean no server bottlenecks. Maximum speed, every time.</p>
+          </div>
+          <div className="space-y-3">
+            <div className="text-4xl">∞</div>
+            <h3 className="text-xl font-semibold text-[var(--text)]">No Limits</h3>
+            <p className="text-[var(--muted)]">Send files of any size, any time. No quotas, no restrictions, no surprises.</p>
+          </div>
+          <div className="space-y-3">
+            <div className="text-4xl">🌐</div>
+            <h3 className="text-xl font-semibold text-[var(--text)]">Works Everywhere</h3>
+            <p className="text-[var(--muted)]">Any device, any browser. No installation, no registration, no hassle.</p>
+          </div>
+          <div className="space-y-3">
+            <div className="text-4xl">📊</div>
+            <h3 className="text-xl font-semibold text-[var(--text)]">Real-Time Tracking</h3>
+            <p className="text-[var(--muted)]">Watch your files transfer with live progress, speed, and time estimates.</p>
+          </div>
+          <div className="space-y-3">
+            <div className="text-4xl">🔗</div>
+            <h3 className="text-xl font-semibold text-[var(--text)]">Shareable Links</h3>
+            <p className="text-[var(--muted)]">Generate QR codes or links to share with others. They auto-connect when opened.</p>
+          </div>
+        </div>
+      </section>
+
       {/* Privacy & Security */}
       <section className="space-y-6">
         <h2 className="text-3xl font-bold text-[var(--text)]">Privacy & Security</h2>
@@ -178,7 +178,6 @@ export default function AboutPage() {
       {/* Footer */}
       <section className="text-center text-sm text-[var(--muted)] pt-12 border-t border-[var(--border)]">
         <p>Built with ❤️ by Adarsh</p>
-        <p className="mt-2">React • Vite • PeerJS • Tailwind CSS</p>
       </section>
     </main>
   )

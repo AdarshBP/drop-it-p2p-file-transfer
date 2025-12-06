@@ -18,7 +18,9 @@ export default function SendTab({
   onSendAll,
   pendingCount,
   logs,
-  onClearActivity
+  onClearActivity,
+  debug,
+  remoteDevice
 }) {
   const badgeClass =
     connStatus.kind==='connected' ? 'bg-green-600 text-white' :
@@ -28,17 +30,7 @@ export default function SendTab({
   return (
     <div className="space-y-12">
       {/* Peer Card */}
-      <PeerCard peerId={peerId} onCopy={onCopyPeerId} connStatus={connStatus} />
-
-      {/* Connection Status */}
-      {connStatus.kind !== 'disconnected' && (
-        <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${badgeClass}`}>
-            <span className="w-2 h-2 rounded-full bg-current animate-pulse"></span>
-            {connStatus.text}
-          </span>
-        </div>
-      )}
+      <PeerCard peerId={peerId} onCopy={onCopyPeerId} connStatus={connStatus} debug={debug} remoteDevice={remoteDevice} />
 
       {/* Files Section */}
       <section className="space-y-4">

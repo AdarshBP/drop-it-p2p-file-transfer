@@ -1,54 +1,38 @@
 import React from 'react'
+import { CONTACT_PROFILE, CONTACT_LINKS, CONTACT_GITHUB } from '../../constants/config.js'
 
 export default function ContactPage() {
-  const contactLinks = [
-    {
-      icon: '📧',
-      label: 'Email',
-      value: 'bpadarsh8@gmail.com',
-      href: 'mailto:bpadarsh8@gmail.com'
-    },
-    {
-      icon: '🌐',
-      label: 'Portfolio',
-      value: 'adarshbp.vercel.app',
-      href: 'https://adarshbp.vercel.app'
-    }
-  ]
-
   return (
     <main className="min-h-[calc(100vh-80px)] flex items-center justify-center py-12 px-4">
-      <div className="max-w-2xl w-full space-y-8">
+      <div className="max-w-2xl w-full space-y-8 animate-fadeInUp">
         {/* Profile Section */}
         <div className="text-center space-y-6">
           {/* Profile Photo */}
           <div className="inline-block relative">
             <div className="w-56 h-56 rounded-full overflow-hidden border-4 border-[var(--border)] shadow-lg">
               <img 
-                src="https://github.com/AdarshBP.png" 
-                alt="Adarsh" 
+                src={CONTACT_PROFILE.photo}
+                alt={CONTACT_PROFILE.photoAlt}
                 className="w-full h-full object-cover"
               />
             </div>
           </div>
-          
           {/* Name & Title */}
           <div className="space-y-2">
             <h1 className="text-4xl font-bold text-[var(--text)]">
-              Adarsh
+              {CONTACT_PROFILE.name}
             </h1>
             <p className="text-lg text-[var(--primary)] font-medium">
-              Founder of DropIt
+              {CONTACT_PROFILE.title}
             </p>
             <p className="text-[var(--muted)]">
-              Full Stack Developer
+              {CONTACT_PROFILE.subtitle}
             </p>
           </div>
         </div>
-
         {/* Contact Links */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {contactLinks.map((link) => (
+          {CONTACT_LINKS.map((link) => (
             <a
               key={link.label}
               href={link.href}
@@ -71,17 +55,16 @@ export default function ContactPage() {
             </a>
           ))}
         </div>
-
         {/* GitHub Link */}
         <div className="text-center pt-4">
           <a 
-            href="https://github.com/AdarshBP/drop-it-p2p-file-transfer" 
+            href={CONTACT_GITHUB.href}
             target="_blank" 
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-sm text-[var(--muted)] hover:text-[var(--primary)] transition-colors"
           >
-            <span>💡</span>
-            <span>Found a bug? Open an issue on GitHub</span>
+            <span>{CONTACT_GITHUB.icon}</span>
+            <span>{CONTACT_GITHUB.label}</span>
           </a>
         </div>
       </div>

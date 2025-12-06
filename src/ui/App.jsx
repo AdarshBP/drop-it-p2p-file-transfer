@@ -30,7 +30,7 @@ export default function App() {
   }
 
   function reloadApp() {
-    try { window.location.reload() } catch {}
+    try { window.location.replace('/') } catch {}
   }
 
   useEffect(() => { 

@@ -9,18 +9,39 @@ export default function ReceiveTab({
   connStatus,
   receivedFiles,
   logs,
-  onClearActivity
+  onClearActivity,
+  peerId,
+  toast
 }) {
+  const isOwnId = targetId && peerId && targetId === peerId;
+  // Improved: Show spinner if auto-connecting from URL and not connected yet
+  const isAutoConnecting = !!window.location.search.match(/peer=/)
+    && targetId
+    && (connStatus?.kind === 'disconnected' || connStatus?.kind === 'connecting' || !connStatus?.kind);
   return (
     <div className="space-y-12">
       {/* Connect Panel */}
-      <ConnectPanel
+      {!isAutoConnecting && (
+        <ConnectPanel
         targetId={targetId}
         onTargetChange={onTargetChange}
-        onConnect={onConnect}
+        onConnect={isOwnId ? () => toast('Cannot connect to your own Peer ID', 'error') : onConnect}
         onDisconnect={onDisconnect}
         status={connStatus}
       />
+      )}
+      
+      {isAutoConnecting && (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="mb-4">
+            <div className="w-16 h-16 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <div className="text-lg font-semibold text-[var(--primary)] text-center">Trying to connect to peer <span className="font-mono">{targetId}</span>...</div>
+        </div>
+      )}
+      {isOwnId && (
+        <div className="mt-2 text-red-600 font-semibold">Cannot connect to your own Peer ID.</div>
+      )}
 
       {/* Received Files */}
       {receivedFiles.length > 0 && (

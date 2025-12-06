@@ -1,10 +1,15 @@
+
+// List of easy-to-remember, max 6-char names for peer IDs
+import { RANDOM_PEER_NAMES } from '../../constants/config.js'
+
 import React, { useRef, useState } from 'react'
 import QRCode from 'qrcode'
 
-export default function PeerCard({ peerId, onCopy, connStatus }){
+export default function PeerCard({ peerId, onCopy, connStatus, debug, remoteDevice }){
   const qrCanvasRef = useRef(null)
   const [qrVisible, setQrVisible] = useState(false)
-  const isConnected = connStatus?.kind === 'connected'
+    const isConnected = connStatus?.kind === 'connected'
+    const isLoading = !peerId || peerId === '...';
 
   async function handleShowQr(){
     const newVisible = !qrVisible
@@ -61,45 +66,87 @@ export default function PeerCard({ peerId, onCopy, connStatus }){
     }
   }
 
+  // Add Material Icons font to document head if not already present
+  React.useEffect(() => {
+    if (!document.getElementById('material-icons-font')) {
+      const link = document.createElement('link');
+      link.id = 'material-icons-font';
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/icon?family=Material+Icons';
+      document.head.appendChild(link);
+    }
+  }, []);
+
   return (
-    <section className={`space-y-4 p-6 rounded-lg border-2 transition-all duration-300 ${
+    <section className={`space-y-4 p-4 sm:p-6 rounded-lg border-2 transition-all duration-300 ${
       isConnected ? 'border-green-500 bg-green-500/5' : 'border-transparent'
     }  hover:bg-[var(--bg-soft)]/30 hover:border-[var(--primary)] transition-all duration-200`} aria-label="Your Peer ID">
-      <h2 className="text-2xl font-bold text-[var(--text)] flex items-center gap-2">
-        <span className="text-2xl">🆔</span> Your Peer ID
+      <h2 className="text-lg sm:text-2xl font-bold text-[var(--text)] flex items-center gap-2">
+        <span className="material-icons text-lg sm:text-2xl" aria-label="ID">badge</span> Your Peer ID
+        {isLoading && (
+          <span className="ml-2 animate-spin inline-block align-middle">
+            <span className="material-icons text-lg sm:text-2xl" aria-label="Loading">autorenew</span>
+          </span>
+        )}
       </h2>
       <div>
-        <div className="mb-4 p-4 border border-[var(--border)] rounded-lg relative group cursor-pointer hover:bg-[var(--bg-soft)]/30 transition-all duration-200" onClick={onCopy} title="Click to copy">
-          <p className="font-mono text-lg break-all text-[var(--primary)] font-semibold">{peerId}</p>
+        <div className={`mb-4 p-3 sm:p-4 border border-[var(--border)] rounded-lg relative group ${isLoading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-[var(--bg-soft)]/30'} transition-all duration-200`} onClick={!isLoading ? onCopy : undefined} title="Click to copy">
+          <p className="font-mono text-sm sm:text-lg break-all text-[var(--primary)] font-semibold">{isLoading ? 'Loading...' : peerId}</p>
         </div>
+        {isConnected  && (
+          <div className="mb-2 p-3 rounded-lg bg-green-50 border border-green-300 text-green-900">
+            {remoteDevice && (
+              <div className="mt-1 text-xs text-green-800">
+                <span className="material-icons text-base align-middle mr-1" aria-label="Device">devices</span>
+                <span>Remote Device: <b>{remoteDevice.platform || ''}</b> <span className="text-gray-500">({remoteDevice.userAgent})</span></span>
+              </div>
+            )}
+            {connStatus?.text && (
+              <div className="mt-1 text-xs text-green-800">
+                <span>{connStatus.text}</span>
+              </div>
+            )}
+          </div>
+        )}
         {qrVisible && (
           <div className="mb-4 flex justify-center p-4 bg-white rounded-lg border border-[var(--border)]">
             <canvas ref={qrCanvasRef} />
           </div>
         )}
         <div className="space-y-3">
-          <div className="flex gap-3">
-            <button className="flex-1 px-4 py-3 rounded-lg border border-[var(--border)] hover:bg-[var(--bg-soft)]/50 text-[var(--text)] font-medium transition-all duration-200" onClick={handleShowQr} title="Show QR">
-              {qrVisible ? '❌ Hide QR' : '🔲 Show QR'}
+          <div className="flex gap-2 sm:gap-3">
+            <button
+              className="flex-1 px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-[var(--border)] hover:bg-[var(--bg-soft)]/50 text-[var(--text)] font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              onClick={handleShowQr}
+              title="Show QR"
+              disabled={isLoading}
+            >
+              <span className="material-icons text-base sm:text-lg" aria-label="QR">qr_code_2</span>
+              {qrVisible ? 'Hide QR' : 'Show QR'}
             </button>
-            <button className="flex-1 px-4 py-3 rounded-lg border border-[var(--border)] hover:bg-[var(--bg-soft)]/50 text-[var(--text)] font-medium transition-all duration-200" onClick={copyShareableLink} title="Copy shareable link">
-              🔗 Copy Link
+            <button
+              className="flex-1 px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-[var(--border)] hover:bg-[var(--bg-soft)]/50 text-[var(--text)] font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              onClick={copyShareableLink}
+              title="Copy shareable link"
+              disabled={isLoading}
+            >
+              <span className="material-icons text-base sm:text-lg" aria-label="Copy">link</span>
+              Copy Link
             </button>
           </div>
-          <button 
-            className="w-full px-4 py-3 rounded-lg border border-[var(--border)] hover:bg-[var(--bg-soft)]/50 text-[var(--text)] font-medium transition-all duration-200 flex items-center justify-center gap-2" 
-            onClick={handleShare} 
+          <button
+            className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-[var(--border)] hover:bg-[var(--bg-soft)]/50 text-[var(--text)] font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            onClick={handleShare}
             title="Share via mobile"
+            disabled={isLoading}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
-             Share
+            <span className="material-icons text-base sm:text-lg" aria-label="Share">share</span>
+            Share
           </button>
         </div>
         <div className="pt-3">
-          <p className="text-s text-[var(--muted)] flex items-start gap-2">
-            <span>💡</span>
+          <p className="text-xs sm:text-sm text-[var(--muted)] flex items-start gap-2">
+            <span className="material-icons text-base sm:text-lg" aria-label="Info">lightbulb</span>
             <span>Share the link to let others connect automatically.</span>
           </p>
         </div>
