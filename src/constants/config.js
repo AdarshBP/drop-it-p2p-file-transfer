@@ -1,3 +1,7 @@
+// Heartbeat configuration
+export const HEARTBEAT_INTERVAL_MS = 10000; // 10 seconds
+export const HEARTBEAT_TIMEOUT_MS = 10000; // 10 seconds
+export const HEARTBEAT_FAILURE_THRESHOLD = 2;
 // Contact page profile and links
 export const CONTACT_PROFILE = {
   name: 'Adarsh',
@@ -27,8 +31,7 @@ export const CONTACT_GITHUB = {
   label: 'Found a bug? Open an issue on GitHub',
   icon: '💡',
 };
-// src/constants/config.js
-// Centralized constants and configuration for the app
+
 
 // List of easy-to-remember, max 6-char names for peer IDs
 export const RANDOM_PEER_NAMES = [

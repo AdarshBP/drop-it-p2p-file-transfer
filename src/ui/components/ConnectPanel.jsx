@@ -12,8 +12,8 @@ export default function ConnectPanel({ targetId, onTargetChange, onConnect, onDi
     <section className={`space-y-4 p-6 rounded-lg border-2 transition-all duration-300 ${
       isConnected ? 'border-green-500 bg-green-500/5' : 'border-transparent'
     } hover:bg-[var(--bg-soft)]/30 hover:border-[var(--primary)] transition-all duration-200`} aria-label="Connection Panel">
-      <h2 className="text-2xl font-bold text-[var(--text)] flex items-center gap-2">
-        <span className="text-2xl">🔗</span> Connect
+      <h2 className="text-lg sm:text-2xl font-bold text-[var(--text)] flex items-center gap-2">
+        <span className="material-icons text-lg sm:text-2xl" aria-label="Connect">link</span> Connect
       </h2>
       <div className="space-y-4">
         <div>

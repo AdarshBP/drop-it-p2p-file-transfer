@@ -40,27 +40,27 @@ export default function Navigation({ onThemeToggle, onSettings, onReload, themeL
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
             <button
-              className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--card-hover)] text-[var(--text)] transition-all duration-200 hover:shadow-md"
+              className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--card-hover)] text-[var(--text)] transition-all duration-200 hover:shadow-md flex items-center justify-center"
               onClick={onThemeToggle}
               aria-label="Toggle theme"
             >
-              🌗
+              <span className="material-icons" aria-label="Toggle theme">dark_mode</span>
             </button>
             <button
-              className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--card-hover)] text-[var(--text)] transition-all duration-200 hover:shadow-md"
+              className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--card-hover)] text-[var(--text)] transition-all duration-200 hover:shadow-md flex items-center justify-center"
               onClick={onReload}
               title="Reload app"
               aria-label="Reload"
             >
-              🔄
+              <span className="material-icons" aria-label="Reload">autorenew</span>
             </button>
             <button
-              className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--card-hover)] text-[var(--text)] transition-all duration-200 hover:shadow-md"
+              className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--card-hover)] text-[var(--text)] transition-all duration-200 hover:shadow-md flex items-center justify-center"
               onClick={onSettings}
               title="Open settings"
               aria-haspopup="dialog"
             >
-              ⚙️ 
+              <span className="material-icons" aria-label="Settings">settings</span>
             </button>
           </div>
         </div>

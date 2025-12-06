@@ -83,16 +83,20 @@ export default function PeerCard({ peerId, onCopy, connStatus, debug, remoteDevi
     }  hover:bg-[var(--bg-soft)]/30 hover:border-[var(--primary)] transition-all duration-200`} aria-label="Your Peer ID">
       <h2 className="text-lg sm:text-2xl font-bold text-[var(--text)] flex items-center gap-2">
         <span className="material-icons text-lg sm:text-2xl" aria-label="ID">badge</span> Your Peer ID
-        {isLoading && (
-          <span className="ml-2 animate-spin inline-block align-middle">
-            <span className="material-icons text-lg sm:text-2xl" aria-label="Loading">autorenew</span>
-          </span>
-        )}
       </h2>
       <div>
-        <div className={`mb-4 p-3 sm:p-4 border border-[var(--border)] rounded-lg relative group ${isLoading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-[var(--bg-soft)]/30'} transition-all duration-200`} onClick={!isLoading ? onCopy : undefined} title="Click to copy">
-          <p className="font-mono text-sm sm:text-lg break-all text-[var(--primary)] font-semibold">{isLoading ? 'Loading...' : peerId}</p>
-        </div>
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12 min-h-[180px]">
+            <div className="mb-4">
+              <div className="w-16 h-16 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <div className="text-lg font-semibold text-[var(--primary)] text-center">Loading...</div>
+          </div>
+        ) : (
+          <div className={`mb-4 p-3 sm:p-4 border border-[var(--border)] rounded-lg relative group cursor-pointer hover:bg-[var(--bg-soft)]/30 transition-all duration-200`} onClick={onCopy} title="Click to copy">
+            <p className="font-mono text-sm sm:text-lg break-all text-[var(--primary)] font-semibold">{peerId}</p>
+          </div>
+        )}
         {isConnected  && (
           <div className="mb-2 p-3 rounded-lg bg-green-50 border border-green-300 text-green-900">
             {remoteDevice && (

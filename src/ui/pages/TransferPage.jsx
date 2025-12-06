@@ -3,7 +3,7 @@ import { Peer } from 'peerjs'
 import SendTab from '../components/SendTab.jsx'
 import ReceiveTab from '../components/ReceiveTab.jsx'
 import SettingsModal from '../components/SettingsModal.jsx'
-import { RANDOM_PEER_NAMES, DEFAULT_ICE_CONFIG } from '../../constants/config.js'
+import { RANDOM_PEER_NAMES, DEFAULT_ICE_CONFIG, HEARTBEAT_INTERVAL_MS, HEARTBEAT_TIMEOUT_MS, HEARTBEAT_FAILURE_THRESHOLD } from '../../constants/config.js'
 
 export default function TransferPage({ settings, setSettings, themeLight, toast, showSettings, setShowSettings, targetPeerIdFromUrl }) {
   const [peerId, setPeerId] = useState('...')
@@ -147,7 +147,7 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
     lastHeartbeatRef.current = Date.now()
     heartbeatFailureCountRef.current = 0
     
-    // Send heartbeat every 15 seconds (more tolerant for internet connections)
+    // Send heartbeat every HEARTBEAT_INTERVAL_MS
     heartbeatIntervalRef.current = setInterval(() => {
       if (connRef.current?.open) {
         try {
@@ -156,20 +156,20 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
         } catch (err) {
           log('Heartbeat send failed')
           heartbeatFailureCountRef.current++
-          if (heartbeatFailureCountRef.current >= 3) {
+          if (heartbeatFailureCountRef.current >= HEARTBEAT_FAILURE_THRESHOLD) {
             handleHeartbeatFailure()
           }
         }
       }
-    }, 15000)
+    }, HEARTBEAT_INTERVAL_MS)
 
-    // Check for heartbeat response timeout (45 seconds - 3x the interval for internet latency)
+    // Check for heartbeat response timeout (HEARTBEAT_TIMEOUT_MS)
     heartbeatTimeoutRef.current = setInterval(() => {
       const now = Date.now()
-      if (lastHeartbeatRef.current && now - lastHeartbeatRef.current > 45000) {
+      if (lastHeartbeatRef.current && now - lastHeartbeatRef.current > HEARTBEAT_TIMEOUT_MS) {
         heartbeatFailureCountRef.current++
-        log(`💔 Heartbeat timeout (${heartbeatFailureCountRef.current}/3) - connection may be degraded`)
-        if (heartbeatFailureCountRef.current >= 3) {
+        log(`💔 Heartbeat timeout (${heartbeatFailureCountRef.current}/${HEARTBEAT_FAILURE_THRESHOLD}) - connection may be degraded`)
+        if (heartbeatFailureCountRef.current >= HEARTBEAT_FAILURE_THRESHOLD) {
           handleHeartbeatFailure()
         }
       }
@@ -543,7 +543,7 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
   return (
     <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       {/* Tab Navigation */}
-      <div className="flex border-b border-[var(--border)] mb-8">
+      <div className="flex border-b border-[var(--border)] mb-2">
         <button
           onClick={() => setActiveTab('send')}
           className={`flex-1 px-8 py-4 font-semibold text-lg transition-all duration-200 relative ${
@@ -599,6 +599,11 @@ export default function TransferPage({ settings, setSettings, themeLight, toast,
             onClearActivity={clearActivity}
             debug={settings.debug}
             remoteDevice={remoteDevice}
+            onClearSentFiles={() => {
+              const filtered = tasks.filter(t => !(Math.round((t.offset / t.file.size) * 100) >= 100 && !t.sending));
+              tasksRef.current = filtered;
+              setTasks(filtered);
+            }}
           />
         ) : (
           <ReceiveTab
